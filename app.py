@@ -7,13 +7,13 @@ app.secret_key = "clave_secreta_segura"
 # -----------------------------
 # LOGIN
 # -----------------------------
-def validar_usuario(username, password):
+def validar_usuario(usuario, password):
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
     cursor.execute("""
         SELECT * FROM usuarios
-        WHERE username = ? AND password = ?
+        WHERE usuario = ? AND password = ?
     """, (username, password))
 
     user = cursor.fetchone()
@@ -35,13 +35,13 @@ def login_requerido():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
+        username = request.form["usuario"]
         password = request.form["password"]
 
         user = validar_usuario(username, password)
 
         if user:
-            session["usuario"] = username
+            session["usuario"] = usuario
             return redirect("/")
         else:
             return render_template("login.html", error="Credenciales incorrectas")
