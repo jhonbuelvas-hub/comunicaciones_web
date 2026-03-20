@@ -4,19 +4,23 @@ import sqlite3
 app = Flask(__name__)
 
 def obtener_comunicaciones():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
+    try:
+        conn = sqlite3.connect("database.db")
+        cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT id, fecha, radicado_interno, tipo, asunto, emisor, receptor
-        FROM comunicaciones
-        ORDER BY fecha DESC
-    """)
+        cursor.execute("""
+            SELECT id, fecha, radicado_interno, tipo, asunto, emisor, receptor
+            FROM comunicaciones
+            ORDER BY fecha DESC
+        """)
 
-    datos = cursor.fetchall()
-    conn.close()
-    return datos
+        datos = cursor.fetchall()
+        conn.close()
+        return datos
 
+    except Exception as e:
+        print("ERROR:", e)
+        return []
 
 @app.route("/")
 def index():
