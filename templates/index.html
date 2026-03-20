@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Comunicaciones</title>
+</head>
+<body>
+
+<h2>📨 Comunicaciones</h2>
+
+<table border="1">
+    <tr>
+        <th>ID</th>
+        <th>Fecha</th>
+        <th>Radicado</th>
+        <th>Tipo</th>
+        <th>Asunto</th>
+        <th>Emisor</th>
+        <th>Receptor</th>
+    </tr>
+
+    {% for c in comunicaciones %}
+    <tr>
+        <td>{{ c[0] }}</td>
+        <td>{{ c[1] }}</td>
+        <td>{{ c[2] }}</td>
+        <td>{{ c[3] }}</td>
+        <td>{{ c[4] }}</td>
+        <td>{{ c[5] }}</td>
+        <td>{{ c[6] }}</td>
+    </tr>
+    {% endfor %}
+
+</table>
+
+</body>
+</html>
