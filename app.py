@@ -2,29 +2,25 @@ from flask import Flask, render_template, request, redirect, session
 import sqlite3
 
 app = Flask(__name__)
-app.secret_key = "clave_secreta_segura"
+app.secret_key = "clave_secreta"
 
 # -----------------------------
 # LOGIN
 # -----------------------------
-def validar_usuario(usuario, password):
+def validar_usuario(username, password):
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
     cursor.execute("""
         SELECT * FROM usuarios
         WHERE usuario = ? AND password = ?
-    """, (usuario, password))
+    """, (username, password))
 
     user = cursor.fetchone()
     conn.close()
-
     return user
 
 
-# -----------------------------
-# PROTEGER RUTAS
-# -----------------------------
 def login_requerido():
     return "usuario" in session
 
@@ -35,13 +31,13 @@ def login_requerido():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        usuario = request.form["usuario"]
+        username = request.form["username"]
         password = request.form["password"]
 
-        user = validar_usuario(usuario, password)
+        user = validar_usuario(username, password)
 
         if user:
-            session["usuario"] = usuario
+            session["usuario"] = username
             return redirect("/")
         else:
             return render_template("login.html", error="Credenciales incorrectas")
@@ -49,9 +45,6 @@ def login():
     return render_template("login.html")
 
 
-# -----------------------------
-# LOGOUT
-# -----------------------------
 @app.route("/logout")
 def logout():
     session.clear()
@@ -59,68 +52,106 @@ def logout():
 
 
 # -----------------------------
-# DATOS
+# LISTAR
 # -----------------------------
-def obtener_comunicaciones(filtro="todas", busqueda=""):
-    try:
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
+def obtener_comunicaciones():
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
 
-        condicion = "WHERE 1=1"
+    cursor.execute("""
+        SELECT id, fecha, radicado_interno, tipo, asunto, emisor, receptor, respondida
+        FROM comunicaciones
+        ORDER BY fecha DESC
+    """)
 
-        if filtro == "recibidas":
-            condicion += " AND UPPER(tipo) = 'RECIBIDA'"
-        elif filtro == "enviadas":
-            condicion += " AND UPPER(tipo) = 'ENVIADA'"
-
-        if busqueda:
-            condicion += f"""
-            AND (
-                asunto LIKE '%{busqueda}%'
-                OR emisor LIKE '%{busqueda}%'
-                OR receptor LIKE '%{busqueda}%'
-                OR radicado_interno LIKE '%{busqueda}%'
-            )
-            """
-
-        query = f"""
-            SELECT 
-                id, fecha, radicado_interno, tipo,
-                asunto, emisor, receptor, respondida
-            FROM comunicaciones
-            {condicion}
-            ORDER BY fecha DESC
-        """
-
-        cursor.execute(query)
-        datos = cursor.fetchall()
-        conn.close()
-        return datos
-
-    except Exception as e:
-        print("ERROR:", e)
-        return []
+    datos = cursor.fetchall()
+    conn.close()
+    return datos
 
 
-# -----------------------------
-# HOME PROTEGIDO
-# -----------------------------
 @app.route("/")
 def index():
     if not login_requerido():
         return redirect("/login")
 
-    filtro = request.args.get("filtro", "todas")
-    busqueda = request.args.get("q", "")
+    datos = obtener_comunicaciones()
+    return render_template("index.html", comunicaciones=datos)
 
-    comunicaciones = obtener_comunicaciones(filtro, busqueda)
 
-    return render_template(
-        "index.html",
-        comunicaciones=comunicaciones,
-        filtro=filtro,
-        busqueda=busqueda
-    )
+# -----------------------------
+# NUEVA COMUNICACION
+# -----------------------------
+@app.route("/nueva", methods=["GET", "POST"])
+def nueva():
+    if not login_requerido():
+        return redirect("/login")
+
+    if request.method == "POST":
+        data = (
+            request.form["fecha"],
+            request.form["radicado"],
+            request.form["tipo"],
+            request.form["asunto"],
+            request.form["emisor"],
+            request.form["receptor"]
+        )
+
+        conn = sqlite3.connect("database.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO comunicaciones
+            (fecha, radicado_interno, tipo, asunto, emisor, receptor, respondida)
+            VALUES (?, ?, ?, ?, ?, ?, 0)
+        """, data)
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/")
+
+    return render_template("form.html", accion="Nueva")
+
+
+# -----------------------------
+# EDITAR
+# -----------------------------
+@app.route("/editar/<int:id>", methods=["GET", "POST"])
+def editar(id):
+    if not login_requerido():
+        return redirect("/login")
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    if request.method == "POST":
+
+        data = (
+            request.form["fecha"],
+            request.form["radicado"],
+            request.form["tipo"],
+            request.form["asunto"],
+            request.form["emisor"],
+            request.form["receptor"],
+            id
+        )
+
+        cursor.execute("""
+            UPDATE comunicaciones
+            SET fecha=?, radicado_interno=?, tipo=?, asunto=?, emisor=?, receptor=?
+            WHERE id=?
+        """, data)
+
+        conn.commit()
+        conn.close()
+
+        return redirect("/")
+
+    cursor.execute("SELECT * FROM comunicaciones WHERE id=?", (id,))
+    comunicacion = cursor.fetchone()
+    conn.close()
+
+    return render_template("form.html", accion="Editar", c=comunicacion)
 
 
 if __name__ == "__main__":
