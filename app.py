@@ -14,7 +14,7 @@ def validar_usuario(usuario, password):
     cursor.execute("""
         SELECT * FROM usuarios
         WHERE usuario = ? AND password = ?
-    """, (username, password))
+    """, (usuario, password))
 
     user = cursor.fetchone()
     conn.close()
@@ -35,10 +35,10 @@ def login_requerido():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["usuario"]
+        usuario = request.form["usuario"]
         password = request.form["password"]
 
-        user = validar_usuario(username, password)
+        user = validar_usuario(usuario, password)
 
         if user:
             session["usuario"] = usuario
