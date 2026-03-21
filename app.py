@@ -22,8 +22,9 @@ def validar_usuario(username, password):
 
 
 def login_requerido():
-    return "usuario" in session
-
+    if "usuario" not in session:
+        return False
+    return True
 
 # -----------------------------
 # LOGIN
