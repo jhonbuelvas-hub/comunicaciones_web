@@ -21,8 +21,16 @@ def validar_usuario(usuario, password):
     return user
 
 
-def login_requerido():
-    return "usuario" in session
+# -----------------------------
+# PROTECCION GLOBAL
+# -----------------------------
+@app.before_request
+def proteger_rutas():
+    rutas_libres = ["/login"]
+
+    if request.path not in rutas_libres:
+        if "usuario" not in session:
+            return redirect("/login")
 
 
 # -----------------------------
@@ -56,7 +64,7 @@ def logout():
 
 
 # -----------------------------
-# CONSULTA COMUNICACIONES
+# CONSULTA
 # -----------------------------
 def obtener_comunicaciones(filtro="todas"):
     conn = sqlite3.connect("database.db")
@@ -70,11 +78,11 @@ def obtener_comunicaciones(filtro="todas"):
         condicion = "WHERE UPPER(tipo) = 'ENVIADA'"
 
     query = f"""
-        SELECT id, fecha, tipo, asunto, responsable,
+        SELECT id, fecha_llegada, tipo, asunto, responsable,
                fecha_limite, respondida
         FROM comunicaciones
         {condicion}
-        ORDER BY fecha DESC
+        ORDER BY fecha_llegada DESC
     """
 
     cursor.execute(query)
@@ -84,26 +92,20 @@ def obtener_comunicaciones(filtro="todas"):
 
 
 # -----------------------------
-# HOME (PROTEGIDO)
+# HOME
 # -----------------------------
 @app.route("/")
 def index():
-    if not login_requerido():
-        return redirect("/login")
-
     filtro = request.args.get("filtro", "todas")
     datos = obtener_comunicaciones(filtro)
-
     return render_template("index.html", comunicaciones=datos, filtro=filtro)
 
 
 # -----------------------------
-# NUEVA COMUNICACION
+# NUEVA
 # -----------------------------
 @app.route("/nueva", methods=["GET", "POST"])
 def nueva():
-    if not login_requerido():
-        return redirect("/login")
 
     if request.method == "POST":
         conn = sqlite3.connect("database.db")
@@ -111,16 +113,15 @@ def nueva():
 
         cursor.execute("""
         INSERT INTO comunicaciones (
-            fecha, fecha_llegada, tipo, medio,
+            fecha_llegada, tipo, medio,
             asunto, emisor, receptor,
             radicado_interno, radicado_externo,
             especialidad, responsable, prioridad,
             fecha_limite, dias_respuesta,
             observaciones, respondida
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         """, (
-            request.form["fecha"],
             request.form["fecha_llegada"],
             request.form["tipo"],
             request.form["medio"],
@@ -146,12 +147,10 @@ def nueva():
 
 
 # -----------------------------
-# EDITAR COMUNICACION
+# EDITAR
 # -----------------------------
 @app.route("/editar/<int:id>", methods=["GET", "POST"])
 def editar(id):
-    if not login_requerido():
-        return redirect("/login")
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
@@ -159,7 +158,7 @@ def editar(id):
     if request.method == "POST":
         cursor.execute("""
         UPDATE comunicaciones SET
-            fecha=?, fecha_llegada=?, tipo=?, medio=?,
+            fecha_llegada=?, tipo=?, medio=?,
             asunto=?, emisor=?, receptor=?,
             radicado_interno=?, radicado_externo=?,
             especialidad=?, responsable=?, prioridad=?,
@@ -167,7 +166,6 @@ def editar(id):
             observaciones=?, respondida=?
         WHERE id=?
         """, (
-            request.form["fecha"],
             request.form["fecha_llegada"],
             request.form["tipo"],
             request.form["medio"],
@@ -188,11 +186,10 @@ def editar(id):
 
         conn.commit()
         conn.close()
-
         return redirect("/")
 
     cursor.execute("""
-    SELECT id, fecha, fecha_llegada, tipo, medio,
+    SELECT id, fecha_llegada, tipo, medio,
            asunto, emisor, receptor,
            radicado_interno, radicado_externo,
            especialidad, responsable, prioridad,
@@ -207,8 +204,5 @@ def editar(id):
     return render_template("form.html", accion="Editar", c=c)
 
 
-# -----------------------------
-# RUN
-# -----------------------------
 if __name__ == "__main__":
     app.run(debug=True)
