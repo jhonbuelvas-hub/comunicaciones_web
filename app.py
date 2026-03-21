@@ -7,14 +7,14 @@ app.secret_key = "clave_secreta"
 # -----------------------------
 # LOGIN
 # -----------------------------
-def validar_usuario(username, password):
+def validar_usuario(usuario, password):
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
     cursor.execute("""
         SELECT * FROM usuarios
         WHERE usuario = ? AND password = ?
-    """, (username, password))
+    """, (usuario, password))
 
     user = cursor.fetchone()
     conn.close()
@@ -22,23 +22,23 @@ def validar_usuario(username, password):
 
 
 def login_requerido():
-    if "usuario" not in session:
-        return False
-    return True
+    return "usuario" in session
+
 
 # -----------------------------
 # LOGIN
 # -----------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
+
     if request.method == "POST":
-        user = validar_usuario(
-            request.form["username"],
-            request.form["password"]
-        )
+        usuario = request.form["usuario"]
+        password = request.form["password"]
+
+        user = validar_usuario(usuario, password)
 
         if user:
-            session["usuario"] = request.form["username"]
+            session["usuario"] = usuario
             return redirect("/")
         else:
             return render_template("login.html", error="Credenciales incorrectas")
@@ -46,6 +46,9 @@ def login():
     return render_template("login.html")
 
 
+# -----------------------------
+# LOGOUT
+# -----------------------------
 @app.route("/logout")
 def logout():
     session.clear()
@@ -81,7 +84,7 @@ def obtener_comunicaciones(filtro="todas"):
 
 
 # -----------------------------
-# HOME
+# HOME (PROTEGIDO)
 # -----------------------------
 @app.route("/")
 def index():
@@ -155,6 +158,7 @@ def editar(id):
 
         conn.commit()
         conn.close()
+
         return redirect("/")
 
     cursor.execute("SELECT * FROM comunicaciones WHERE id=?", (id,))
